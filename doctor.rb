@@ -19,7 +19,7 @@ class Doctor
     @password = password
     @logger = logger
     @queued = {}
-    log("starting up")
+    log "starting up"
   end
 
   def run
@@ -84,12 +84,12 @@ class Doctor
   def jabber
     begin
       unless @jabber
-        log("connecting....")
+        log "connecting...."
         @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor, ask for help...")
         @jabber.accept_subscriptions = false
       end  
     rescue => e
-      log("Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}.")
+      log "Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}."
       sleep 60
       retry
     end
