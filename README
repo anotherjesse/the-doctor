@@ -1,0 +1,8 @@
+a bot for controling iTunes (and other apps) via jabber.
+
+To use, create a file called auth.yml with the jabber id and password:
+
+--- 
+- myaccount@jabber.org
+- mypassword
+
