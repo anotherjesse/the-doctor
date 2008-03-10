@@ -25,12 +25,13 @@ class Doctor
   def run
     @queued.each do |key, cmds|
       next if key > Time.now
-      log "event schedule for #{key.to_s}"
+      log "running event scheduled for #{key.to_s}"
       cmds.each do |cmd|
         itunes.send cmd
       end
       @queued.delete(key)
     end
+
     jabber.received_messages.each do |message|
       response = process(message) rescue "Exception..."
       jabber.deliver(message.from, response)
@@ -84,7 +85,8 @@ class Doctor
     begin
       unless @jabber
         log("connecting....")
-        @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor, ask for help...") 
+        @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor, ask for help...")
+        @jabber.accept_subscriptions = false
       end  
     rescue => e
       log("Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}.")
