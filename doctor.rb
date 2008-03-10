@@ -2,6 +2,15 @@ require 'rubygems'
 require 'yaml'
 require 'xmpp4r-simple'
 require 'rbosa'
+require 'chronic'
+
+module Jabber
+  class Simple
+    def contact_list
+      roster.items.values.collect { |item| item.jid.to_s if item.subscription != :none or item.ask == :subscribe }.compact.join(' ')
+    end
+  end
+end
 
 class Doctor
 
@@ -21,6 +30,7 @@ class Doctor
   
   def process(message)
     cmd = message.body.strip.downcase.split(' ').first
+    options = message.body.strip.split(' ')[1..-1].join(' ')
     case cmd
     when 'help'
       'current commands: play pause stop'
@@ -30,6 +40,14 @@ class Doctor
     when 'unaccept'
       jabber.accept_subscriptions = false
       'not accepting new users'
+    when 'add'
+      jabber.add(*options.split(' '))
+      'roster: ' + jabber.contact_list
+    when 'remove'
+      jabber.remove(*options.split(' '))
+      'roster: ' + jabber.contact_list
+    when 'roster'
+      'roster: ' + jabber.contact_list
     when 'play'
       itunes = OSA.app('iTunes')
       itunes.play
@@ -42,6 +60,8 @@ class Doctor
       itunes = OSA.app('iTunes')
       itunes.stop
       'stopped'
+    when 'sleep'
+      Chronic.parse(options).to_s
     else
       "unknown command: #{message.body}, try: help"
     end
@@ -53,7 +73,7 @@ class Doctor
     begin
       unless @jabber
         log("connecting....")
-        @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor") 
+        @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor, ask for help...") 
       end  
     rescue => e
       log("[#{Time.now}] Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}.")
