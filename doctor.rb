@@ -18,10 +18,19 @@ class Doctor
     @jid = jid
     @password = password
     @logger = logger
+    @queued = {}
     log("starting up")
   end
 
   def run
+    @queued.each do |key, cmds|
+      next if key > Time.now
+      log "event schedule for #{key.to_s}"
+      cmds.each do |cmd|
+        itunes.send cmd
+      end
+      @queued.delete(key)
+    end
     jabber.received_messages.each do |message|
       response = process(message) rescue "Exception..."
       jabber.deliver(message.from, response)
@@ -49,19 +58,21 @@ class Doctor
     when 'roster'
       'roster: ' + jabber.contact_list
     when 'play'
-      itunes = OSA.app('iTunes')
       itunes.play
-      "playing: #{itunes.current_track.artist}, #{itunes.current_track.name}"
+      "playing"
     when 'pause'
-      itunes = OSA.app('iTunes')
       itunes.pause
-      "paused: #{itunes.current_track.artist}, #{itunes.current_track.name}"
+      "paused"
     when 'stop'
-      itunes = OSA.app('iTunes')
       itunes.stop
       'stopped'
     when 'sleep'
-      Chronic.parse(options).to_s
+      whenz = Chronic.parse(options)
+      @queued[whenz] ||= [] << :pause
+      "pausing at #{whenz}"
+    when 'clear'
+      @queued.clear
+      'all events removed'
     else
       "unknown command: #{message.body}, try: help"
     end
@@ -76,15 +87,19 @@ class Doctor
         @jabber = Jabber::Simple.new(@jid, @password, :chat, "I'm the Doctor, ask for help...") 
       end  
     rescue => e
-      log("[#{Time.now}] Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}.")
+      log("Couldn't connect to Jabber (#{@jid}, #{@password}): #{e}.")
       sleep 60
       retry
     end
     @jabber
   end
+  
+  def itunes
+    @itunes ||= OSA.app('iTunes')
+  end
 
   def log(msg)
-    msg = "#{@screen_name}: #{msg}"
+    msg = "[#{Time.now}]: #{msg}"
     
     if @logger
       @logger.info(msg)
